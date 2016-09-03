@@ -15,6 +15,17 @@ inline static void pin_mux(Pin p) {
   PORT->Group[p.group].PINCFG[p.pin].bit.PMUXEN = 1;
 }
 
+// TODO: Somehow integrate with pin_mux
+inline static void pin_alt_mux(Pin p) {
+  if (p.pin & 1) {
+    PORT->Group[p.group].PMUX[p.pin/2].bit.PMUXO = p.alt_mux;
+  } else {
+    PORT->Group[p.group].PMUX[p.pin/2].bit.PMUXE = p.alt_mux;
+  }
+
+  PORT->Group[p.group].PINCFG[p.pin].bit.PMUXEN = 1;
+}
+
 // all adc functions are on peripherial B (0x01)
 inline static void pin_analog(Pin p) {
   if (p.pin & 1) {
@@ -157,10 +168,12 @@ inline static void evsys_config(u8 channel, u8 source, u8 user) {
 #define EVSYS_EVD(N) ((N)<=7 ? (1<<((N) + 8)) : (1 << (24 + (N) - 8)))
 
 // analog.c
-void adc_init(u8 channel);
+void adc_init(u8 channel, u8 refctrl);
+u16 adc_sample();
+u16 adc_read(Pin p, u32 gain);
 void dac_init(u8 channel);
-uint16_t analog_read(Pin p);
-void analog_write(Pin p, u16 val);
+void dac_write(Pin p, u16 val);
+
 
 // clock.c
 void gclk_enable(uint32_t id, uint32_t src, uint32_t div);
@@ -174,6 +187,7 @@ void dma_init();
 void dma_sercom_start_tx(DmaChan chan, SercomId id, u8* src, unsigned size);
 void dma_sercom_start_rx(DmaChan chan, SercomId id, u8* dst, unsigned size);
 void dma_abort(DmaChan chan);
+void dma_enable_interrupt(DmaChan chan);
 void dma_fill_sercom_tx(DmacDescriptor* desc, SercomId id, u8 *src, unsigned size);
 void dma_fill_sercom_rx(DmacDescriptor* desc, SercomId id, u8 *dst, unsigned size);
 void dma_sercom_configure_tx(DmaChan chan, SercomId id);
@@ -189,7 +203,9 @@ inline static Sercom* sercom(SercomId id) {
   return (Sercom*) (0x42000800U + id * 1024);
 }
 
-#define SERCOM_SPI_BAUD_10MHZ 2
+#define SERCOM_SPI_BAUD_8MHZ 2
+#define SERCOM_SPI_BAUD_12MHZ 1
+#define SERCOM_SPI_BAUD_24MHZ 0
 void sercom_clock_enable(SercomId id, uint32_t clock_channel, u8 div);
 void sercom_reset(SercomId id);
 void sercom_spi_slave_init(SercomId id, u32 dipo, u32 dopo, bool cpol, bool cpha);
@@ -232,3 +248,21 @@ void timer_clock_enable(TimerId id);
 void tcc_delay_start(TimerId id, u32 ticks);
 void tcc_delay_disable(TimerId id);
 void tcc_delay_enable(TimerId id);
+
+// PWM
+
+void pwm_bank_enable(TimerId id);
+void pwm_bank_reset(TimerId id);
+void pwm_bank_disable(TimerId id);
+void pwm_bank_set_period(TimerId id, u8 new_prescalar, u16 new_period);
+void pwm_set_pin_duty(Pin p, u16 duty_cycle);
+
+// wdt
+
+inline static void wdt_reset(u32 clock_channel) {
+  GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN |
+      GCLK_CLKCTRL_GEN(clock_channel) |
+      GCLK_CLKCTRL_ID(WDT_GCLK_ID);
+  WDT->CONFIG.reg = 0x7; // 31ms
+  WDT->CTRL.reg = WDT_CTRL_ENABLE;
+}

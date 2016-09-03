@@ -30,8 +30,6 @@
 #define GCLK_32K    2
 #define GCLK_PORT_A 3
 
-// port.c
-
 #define BRIDGE_BUF_SIZE 256
 #define BRIDGE_ARG_SIZE 5
 
@@ -46,26 +44,61 @@ typedef struct UartBuf {
 } UartBuf;
 
 typedef struct PortData {
-    u8 chan;
+    /// Pin mappings
     const TesselPort* port;
+
+    /// Buffers for data from the host
+    USB_ALIGN u8 cmd_buf[BRIDGE_BUF_SIZE];
+
+    /// Buffers for data to the host
+    USB_ALIGN u8 reply_buf[BRIDGE_BUF_SIZE];
+
+    /// Bridge channel
+    u8 chan;
+
+    /// DMA channel for TX
     DmaChan dma_tx;
+
+    /// DMA channel for RX
     DmaChan dma_rx;
 
+    /// Parser state (PortState in port.c)
     u8 state;
+
+    /// Port mode (SPI/UART/etc, PortMode in port.c)
     u8 mode;
-    u8 cmd_buf[BRIDGE_BUF_SIZE];
+
+    /// Length of valid data in cmd_buf
     u8 cmd_len;
+
+    /// Current position in cmd_buf
     u8 cmd_pos;
-    u8 reply_buf[BRIDGE_BUF_SIZE];
+
+    /// Current write position in reply_buf (length of valid data written)
     u8 reply_len;
+
+    /// Currently executing command (PortCmd in port.c)
     u8 cmd;
+
+    /// Parsed arguments
     u8 arg[BRIDGE_ARG_SIZE];
+
+    /// Length of arguments
     u8 arg_len;
+
+    /// Position into arguments
     u8 arg_pos;
-    u8 len;
+
+    /// GCLK channel for this port
     u8 clock_channel;
+
+    /// TCC channel for this port
     u8 tcc_channel;
+
+    /// True if the port is waiting for a packet from the host
     bool pending_out;
+
+    /// True if the port is sending a packet to the host
     bool pending_in;
     UartBuf uart_buf;
 } PortData;
@@ -79,7 +112,7 @@ void port_bridge_out_completion(PortData* p, u8 len);
 void port_bridge_in_completion(PortData* p);
 void port_dma_rx_completion(PortData* p);
 void port_dma_tx_completion(PortData* p);
-void bridge_handle_sercom_uart_i2c(PortData* p);
+void port_handle_sercom_uart_i2c(PortData* p);
 void port_handle_extint(PortData *p, u32 flags);
 void port_disable(PortData *p);
 void uart_send_data(PortData *p);

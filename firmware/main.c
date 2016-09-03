@@ -35,11 +35,7 @@ int main(void) {
     NVIC_EnableIRQ(EIC_IRQn);
     NVIC_SetPriority(EIC_IRQn, 0xff);
 
-    evsys_init();
-    NVIC_EnableIRQ(EVSYS_IRQn);
-    NVIC_SetPriority(EVSYS_IRQn, 0);
-
-    adc_init(GCLK_SYSTEM);
+    adc_init(GCLK_SYSTEM, ADC_REFCTRL_REFSEL_INTVCC1);
     dac_init(GCLK_32K);
 
     DAC->CTRLB.reg = DAC_CTRLB_EOEN | DAC_CTRLB_REFSEL_AVCC;
@@ -51,6 +47,7 @@ int main(void) {
 
     __enable_irq();
     SCB->SCR |= SCB_SCR_SLEEPONEXIT_Msk;
+
     while (1) { __WFI(); }
 }
 
@@ -81,7 +78,7 @@ void EIC_Handler() {
 }
 
 void SERCOM_HANDLER(SERCOM_PORT_A_I2C) {
-    bridge_handle_sercom_uart_i2c(&port_a);
+    port_handle_sercom_uart_i2c(&port_a);
 }
 
 void TCC_HANDLER(TCC_PORT_A) {

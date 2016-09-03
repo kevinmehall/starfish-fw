@@ -16,8 +16,11 @@ void dap_enable() {
 }
 
 void dap_disable() {
-    pin_low(PIN_EN_A);
-    pin_low(PIN_EN_B);
+    pin_in(PIN_SWCLK);
+    pin_in(PIN_SWDIO);
+    pin_in(PIN_RESET);
+    usb_disable_ep(USB_EP_DAP_HID_OUT);
+    usb_disable_ep(USB_EP_DAP_HID_IN);
 }
 
 void dap_handle_usb_in_completion() {

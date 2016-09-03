@@ -123,8 +123,12 @@ bool button_pressed() {
 	return true;
 }
 
+bool bootloader_sw_triggered() {
+	return PM->RCAUSE.reg & PM_RCAUSE_WDT;
+}
+
 int main() {
-	if (!flash_valid() || button_pressed()) {
+	if (!flash_valid() || button_pressed() || bootloader_sw_triggered()) {
 		bootloader_main();
 	}
 

@@ -1,3 +1,21 @@
+# Tessel 2 Firmware
+
+[![Code of Conduct](https://img.shields.io/badge/%E2%9D%A4-code%20of%20conduct-blue.svg?style=flat)](https://github.com/tessel/project/blob/master/CONDUCT.md) [![Build Status](https://travis-ci.org/tessel/t2-firmware.svg?branch=master)](https://travis-ci.org/tessel/t2-firmware)
+
+* [About the T2 Firmware](#about-the-t2-firmware)
+  * [SAM D21 Overview](#sam-d21-overview)
+  * [Directory structure](#directory-structure)
+  * [Bridge](#bridge)
+    * [Signals](#signals)
+  * [Port command queue](#port-command-queue)
+  * [Compiling](#compiling)
+    * [Dependencies](#dependencies)
+    * [Building](#building)
+    * [Updating](#updating)
+
+# About the T2 Firmware
+
+## SAM D21 Overview
 
 The Atmel SAM D21 microcontroller on Tessel 2 serves several purposes:
 
@@ -88,7 +106,105 @@ sudo apt-get install git gcc-arm-none-eabi
 ### Building
 
 ```
-git clone https://github.com/tessel/v2-firmware --recursive
-cd v2-firmware
+git clone https://github.com/tessel/t2-firmware --recursive
+cd t2-firmware
 make
 ```
+
+### Updating
+`dfu-util` is a command line utility to update the firmware on T2. See [their website](http://dfu-util.sourceforge.net/) for installation instructions (`brew install dfu-util` works).
+
+Plug the USB port your T2 into your computer while holding down the button by the Tessel 2 logo - this will put T2 into bootloader mode, with the power LED blinking.
+
+Now flash the device:
+```
+➜  dfu-util -aFlash -d 1209:7551 -D build/firmware.bin
+...
+dfu-util: Invalid DFU suffix signature
+dfu-util: A valid DFU suffix will be required in a future dfu-util release!!!
+Opening DFU capable USB device...
+ID 1209:7551
+Run-time device DFU version 0101
+Claiming USB DFU Interface...
+Setting Alternate Setting #0 ...
+Determining device status: state = dfuIDLE, status = 0
+dfuIDLE, continuing
+DFU mode device DFU version 0101
+Device returned transfer size 256
+Copying data from PC to DFU device
+Download	[=========================] 100%        12524 bytes
+Download done.
+state(7) = dfuMANIFEST, status(0) = No error condition is present
+dfu-util: unable to read DFU status after completion
+```
+
+That should be it! Don't worry about the final warning at the bottom - it doesn't seem to affect anything.
+
+Note that this only updates the firmware on the SAMD21 coprocessor. You will need to [update OpenWrt on the SoC](https://github.com/tessel/t2-cli#updating) separately. [Eventually](https://github.com/tessel/t2-cli/issues/109) this process will be integrated as the `tessel update` command.
+
+## Using a SWD debug probe
+
+Solder an [0.05in header](http://www.digikey.com/product-detail/en/GRPB052VWVN-RC/S9015E-05-ND/1786455) on J401 next to port A.
+
+We use the [Bus Blaster v3](http://www.seeedstudio.com/depot/Bus-Blaster-v3-p-1415.html) with a
+[Cortex Debug adapter cable](http://www.digikey.com/product-detail/en/ARM-JTAG-20-10/1188-1016-ND/3471401).
+
+It needs to be [flashed to support SWD](http://bgamari.github.io/posts/2014-08-23-swd-with-busblaster-and-openocd.html).
+
+Then run:
+
+```
+arm-none-eabi-gdb build/firmware.elf -ex 'target remote | openocd -c "gdb_port pipe; tcl_port 0; telnet_port 0" -f scripts/d21.cfg'
+```
+
+## Using onboard SWD
+
+One of Tessel's unique features is the ability to program and debug the SAMD21 coprocessor from the
+MT7620 SoC without an external SWD adapter. The SAMD21 SWD pins are connected to GPIOs on the SoC,
+allowing `openocd` to bitbang the SWD protocol.
+
+Log into your Tessel via SSH over WiFi or Ethernet. USB console is implemented in the SAMD21, and
+will be unavailable while that processor is stopped.
+
+Run the following commands to install and start openocd.
+
+```
+opkg update
+opkg install openocd
+
+cat > openocd.cfg <<EOF
+interface sysfsgpio
+transport select swd
+
+sysfsgpio_swd_nums 41 42
+source [find target/at91samdXX.cfg]
+EOF
+
+openocd -f openocd.cfg
+```
+
+Then, in a checkout of this repository after compiling:
+
+```
+arm-none-eabi-gdb build/firmware.elf -ex 'target remote <tessel ip>:3333'
+```
+
+## Flashing the bootloader
+
+**Warning:** You probably do not need to do this. If the bootloader is intact, every other piece of
+software on Tessel can be fixed over USB. If you break the SAMD21 bootloader and can't boot or access
+the SoC, you'll need a SWD adapter to recover the device.
+
+One of the duties of the SAMD21 is to sequence SoC power rails on bootup. Without it, the SoC may not
+boot reliably. If you do this with onboard SWD, be very careful, and don't power down the Tessel until
+you confirm that your computer recognizes the new bootloader over USB.
+
+Compile the firmware, follow the openocd setup instructions above, then run:
+
+```
+$ arm-none-eabi-gdb build/boot.elf -ex 'target remote <tessel ip>:3333'
+(gdb) load
+(gdb) compare-sections
+(gdb) mon reset run
+```
+

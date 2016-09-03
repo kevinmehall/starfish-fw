@@ -11,5 +11,5 @@ $(TARGET)_SRC += \
   firmware/dap/SW_DP.c \
   firmware/dap/dap_hid.c \
 
-$(TARGET)_LDSCRIPT = common/samd21g15a_firmware_partition.ld
-$(TARGET)_DEFINE += -D __SAMD21G15A__
+$(TARGET)_LDSCRIPT = common/samd21g18a_firmware_partition.ld
+$(TARGET)_DEFINE += -D __SAMD21G18A__

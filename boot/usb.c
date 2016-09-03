@@ -1,4 +1,4 @@
-// Copyright 2014 Technical Machine, Inc. See the COPYRIGHT
+// Copyright 2015 Tessel See the COPYRIGHT
 // file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
