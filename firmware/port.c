@@ -135,6 +135,7 @@ void port_enable(PortData* p) {
     pin_high(p->port->power);
     pin_high(PIN_EN_A);
     pin_high(PIN_EN_B);
+    pin_low(PIN_LED[2]);
 
     for (int i = 0; i<8; i++) {
         pin_pull_up(p->port->gpio[i]);
@@ -163,6 +164,8 @@ void port_disable(PortData* p) {
 
     pin_low(PIN_EN_A);
     pin_low(PIN_EN_B);
+    pin_high(PIN_LED[2]);
+
 }
 
 /// Enqueue a byte on the reply buf. Requires that at least one byte of space is available.
